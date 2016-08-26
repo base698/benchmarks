@@ -13,3 +13,10 @@ Doing read test...
 10587.28 get OPS (ops/second)
 2 failures.
 ```
+
+## OR:  Build and use the binary
+```bash
+$ go get
+$ go build bench.go
+$ ./benchmarks
+```
