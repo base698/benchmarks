@@ -4,6 +4,7 @@ import (
  "github.com/couchbase/go-couchbase"
  "gopkg.in/redis.v4"
  _ "github.com/lib/pq"
+ "bufio"
  "database/sql"
  "encoding/json"
  "strings"
@@ -30,20 +31,20 @@ type User struct {
 }
 
 type CouchClient struct {
-	client *couchbase.Bucket
+  client *couchbase.Bucket
 }
 
 type RedisClient struct {
-	client *redis.Client
+  client *redis.Client
 }
 
 type PGClient struct {
-	client *sql.DB
+  client *sql.DB
 }
 
 type Client interface {
-	Set(key string, value string) (error)
-	Get(key string) (string, error)
+  Set(key string, value string) (error)
+  Get(key string) (string, error)
 }
 
 
@@ -52,7 +53,7 @@ func (c *CouchClient) Set(key string, value string) (error) {
    if err != nil {
      log.Println(err)
    }
-	 return err
+   return err
 }
 
 func (c *CouchClient) Get(key string) (string, error) {
@@ -65,17 +66,17 @@ func (c *CouchClient) Get(key string) (string, error) {
      bytes, err = json.Marshal(user)
    }
 
-	 return string(bytes), err
+   return string(bytes), err
 }
 
 func (c *RedisClient) Set(key string, value string) (error) {
    err := c.client.Set(key, value, 0).Err()
-	 return err
+   return err
 }
 
 func (c *RedisClient) Get(key string) (string, error) {
-	 v, err := c.client.Get(key).Result()
-	 return v, err
+   v, err := c.client.Get(key).Result()
+   return v, err
 }
 
 func (c *PGClient) Set(key string, value string) (error) {
@@ -127,8 +128,33 @@ func worker(linkChan chan int64, wg *sync.WaitGroup, processor func(int64)) {
 
 }
 
+func readLines(path string) ([]string, error) {
+  file, err := os.Open(path)
+  if err != nil {
+    return nil, err
+  }
+  defer file.Close()
+
+  var lines []string
+  scanner := bufio.NewScanner(file)
+  for scanner.Scan() {
+    lines = append(lines, scanner.Text())
+  }
+  return lines, scanner.Err()
+}
+
+var words []string
 func getUser() User {
-   return User{0, rand.Intn(90)+1, "Some really long name, like the wind", "Last", "thewind@gmail.com", "jfajoweihf0283048hg", rand.Intn(1e5)+1, "M"}
+   var err error
+   if words == nil {
+     words, err = readLines("./words.shuffled.txt")
+     if err != nil {
+       log.Fatal("Problem reading file")
+     }
+   }
+   firstName := words[rand.Intn(len(words)-1)]
+   lastName := words[rand.Intn(len(words)-1)]
+   return User{0, rand.Intn(90)+1, firstName, lastName, firstName + "." + lastName + "@gmail.com", "jfajoweihf0283048hg", rand.Intn(1e5)+1, "M"}
 }
 
 func env(name string, numDocs int, threads int, operation (func(id int64))) {
@@ -173,56 +199,54 @@ func main() {
   test := flag.String("test", "redis", "number of requests to make")
   flag.Parse()
 
-	var client Client
-	// TODO: configure with properties
-	switch(*test) {
-	  case "redis":
-	    client = &RedisClient{redis.NewClient(&redis.Options{
-						Addr:     "localhost:6379",
-						Password: "", // no password set
-						DB:       0,  // use default DB
-			})}
-	  case "couchbase":
-		    const BUCKET = "__test_bucket__"
-				c, err := couchbase.Connect("http://localhost:8091/")
-				if err != nil {
-						log.Fatalf("Error connecting:  %v", err)
-				}
+  var client Client
+  // TODO: configure with properties
+  switch(*test) {
+    case "redis":
+      client = &RedisClient{redis.NewClient(&redis.Options{
+            Addr:     "localhost:6379",
+            Password: "", // no password set
+            DB:       0,  // use default DB
+      })}
+    case "couchbase":
+        const BUCKET = "__test_bucket__"
+        c, err := couchbase.Connect("http://localhost:8091/")
+        if err != nil {
+            log.Fatalf("Error connecting:  %v", err)
+        }
 
-				pool, err := c.GetPool("default")
-				if err != nil {
-						log.Fatalf("Error getting pool:  %v", err)
-				}
+        pool, err := c.GetPool("default")
+        if err != nil {
+            log.Fatalf("Error getting pool:  %v", err)
+        }
 
-				bucket, err := pool.GetBucket(BUCKET)
-				if err != nil {
-						log.Fatalf("Error getting bucket:  %v", err)
-				}
+        bucket, err := pool.GetBucket(BUCKET)
+        if err != nil {
+            log.Fatalf("Error getting bucket:  %v", err)
+        }
 
         client = &CouchClient{bucket}
     case "psql":
       fallthrough
-	  case "postgres":
+    case "postgres":
       str := os.Getenv("DATABASE_URL") + "?sslmode=disable"
-			db, err := sql.Open("postgres", str)
-			if err != nil {
-				log.Fatal(err)
+      db, err := sql.Open("postgres", str)
+      if err != nil {
+        log.Fatal(err)
         os.Exit(1)
-			}
-
+      }
       client = &PGClient{db}
-
-	  default:
+    default:
       log.Fatalf(`Test "%s", not recognized`, *test)
-	    os.Exit(1)
-	}
+      os.Exit(1)
+  }
 
   log.Println(fmt.Sprintf("Testing %s using %d requests using %d threads.", *test, *requests, *threads))
 
-	var failureCount uint64 = 0
+  var failureCount uint64 = 0
 
   log.Println("Doing insert test...")
-	env("insert", *requests, *threads, func(id int64) {
+  env("insert", *requests, *threads, func(id int64) {
        bytes, err := json.Marshal(getUser())
 
        if err == nil {
@@ -230,23 +254,22 @@ func main() {
        }
 
        if err != nil {
-				 atomic.AddUint64(&failureCount, 1)
+         atomic.AddUint64(&failureCount, 1)
        }
-	})
+  })
 
   log.Printf("%d failures.\n", atomic.LoadUint64(&failureCount))
   failureCount = 0
 
   if *doGet {
     log.Println("Doing read test...")
-		env("get", *requests, *threads, func(id int64) {
-				_, err := client.Get("users:" + strconv.FormatInt(id, 10))
-				if err != nil {
-				    atomic.AddUint64(&failureCount, 1)
-				}
-		})
+    env("get", *requests, *threads, func(id int64) {
+        _, err := client.Get("users:" + strconv.FormatInt(id, 10))
+        if err != nil {
+            atomic.AddUint64(&failureCount, 1)
+        }
+    })
 
     log.Printf("%d failures.\n", atomic.LoadUint64(&failureCount))
   }
-
 }
