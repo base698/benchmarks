@@ -3,6 +3,8 @@
 $ go run bench.go -test=psql -get -r 1000000
 ```
 
+Valid tests are psql, redis, couchbase.  Set DATABASE_URL to use psql.  
+
 ## Example output
 ```
 Testing psql using 1000000 requests using 20 threads.
