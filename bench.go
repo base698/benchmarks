@@ -195,7 +195,7 @@ func env(name string, numDocs int, threads int, operation (func(id int64))) {
 func main() {
   requests := flag.Int("r", 20000, "number of requests to make")
   threads := flag.Int("c", 20, "number of threads")
-  doGet := flag.Bool("get", false, "Get test to Couchbase")
+  doGet := flag.Bool("get", false, "Reads test")
   test := flag.String("test", "redis", "number of requests to make")
   flag.Parse()
 
