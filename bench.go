@@ -4,6 +4,7 @@ import (
  "github.com/couchbase/go-couchbase"
  "gopkg.in/redis.v4"
  _ "github.com/lib/pq"
+ "crypto/md5"
  "bufio"
  "database/sql"
  "encoding/json"
@@ -154,7 +155,8 @@ func getUser() User {
    }
    firstName := words[rand.Intn(len(words)-1)]
    lastName := words[rand.Intn(len(words)-1)]
-   return User{0, rand.Intn(90)+1, firstName, lastName, firstName + "." + lastName + "@gmail.com", "jfajoweihf0283048hg", rand.Intn(1e5)+1, "M"}
+   password := fmt.Sprintf("%x", md5.Sum([]byte(firstName + lastName + fmt.Sprintf("%d", rand.Intn(1e5)))))
+   return User{0, rand.Intn(90)+1, firstName, lastName, firstName + "." + lastName + "@gmail.com", password, rand.Intn(1e5)+1, "M"}
 }
 
 func env(name string, numDocs int, threads int, operation (func(id int64))) {
