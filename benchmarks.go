@@ -146,13 +146,6 @@ func readLines(path string) ([]string, error) {
 
 var words []string
 func getUser() User {
-   var err error
-   if words == nil {
-     words, err = readLines("./words.shuffled.txt")
-     if err != nil {
-       log.Fatal("Problem reading file")
-     }
-   }
    firstName := words[rand.Intn(len(words)-1)]
    lastName := words[rand.Intn(len(words)-1)]
    password := fmt.Sprintf("%x", md5.Sum([]byte(firstName + lastName + fmt.Sprintf("%d", rand.Intn(1e5)))))
@@ -195,13 +188,20 @@ func DoBenchmark(name string, numDocs int, threads int, operation (func(id int64
 
 
 func main() {
+  var err error
+  var client Client
+
   requests := flag.Int("r", 20000, "number of requests to make")
   threads := flag.Int("c", 20, "number of threads")
   doGet := flag.Bool("get", false, "Reads test")
   test := flag.String("test", "redis", "number of requests to make")
   flag.Parse()
 
-  var client Client
+	words, err = readLines("./words.shuffled.txt")
+	if err != nil {
+ 		log.Fatal("Problem reading words file.")
+	}
+
   // TODO: configure with properties
   switch(*test) {
     case "redis":
