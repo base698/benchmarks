@@ -129,6 +129,7 @@ func worker(linkChan chan int64, wg *sync.WaitGroup, processor func(int64)) {
 
 }
 
+var words []string
 func readLines(path string) ([]string, error) {
   file, err := os.Open(path)
   if err != nil {
@@ -144,7 +145,6 @@ func readLines(path string) ([]string, error) {
   return lines, scanner.Err()
 }
 
-var words []string
 func getUser() User {
    firstName := words[rand.Intn(len(words)-1)]
    lastName := words[rand.Intn(len(words)-1)]
