@@ -159,7 +159,7 @@ func getUser() User {
    return User{0, rand.Intn(90)+1, firstName, lastName, firstName + "." + lastName + "@gmail.com", password, rand.Intn(1e5)+1, "M"}
 }
 
-func env(name string, numDocs int, threads int, operation (func(id int64))) {
+func DoBenchmark(name string, numDocs int, threads int, operation (func(id int64))) {
   opCh := make(chan int64)
   failureCh := make(chan int64)
   wg := new(sync.WaitGroup)
@@ -248,7 +248,7 @@ func main() {
   var failureCount uint64 = 0
 
   log.Println("Doing insert test...")
-  env("insert", *requests, *threads, func(id int64) {
+  DoBenchmark("insert", *requests, *threads, func(id int64) {
        bytes, err := json.Marshal(getUser())
 
        if err == nil {
@@ -265,7 +265,7 @@ func main() {
 
   if *doGet {
     log.Println("Doing read test...")
-    env("get", *requests, *threads, func(id int64) {
+    DoBenchmark("get", *requests, *threads, func(id int64) {
         _, err := client.Get("users:" + strconv.FormatInt(id, 10))
         if err != nil {
             atomic.AddUint64(&failureCount, 1)
