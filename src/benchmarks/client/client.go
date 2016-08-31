@@ -10,6 +10,7 @@ import (
  _ "github.com/lib/pq"
  "database/sql"
  "encoding/json"
+ "github.com/gocql/gocql"
 )
 
 
@@ -29,6 +30,10 @@ type CouchClient struct {
   client *couchbase.Bucket
 }
 
+type CassandraClient struct {
+  client *gocql.Session
+}
+
 type RedisClient struct {
   client *redis.Client
 }
@@ -42,6 +47,29 @@ type Client interface {
   Get(key string) (string, error)
 }
 
+func (c *CassandraClient) Set(key string, value string) (error) {
+   var user User
+   var err error = json.Unmarshal([]byte(value), &user)
+
+	if err != nil {
+		 return err
+	}
+  cql := "INSERT INTO users(id, first_name, last_name, email, city_id, gender, password) VALUES (?,?,?,?,?,?,?)"   
+  if err = c.client.Query(cql,
+	 gocql.TimeUUID(), user.FirstName, user.LastName, user.Email, user.CityId, user.Gender, user.Password).Exec(); err != nil {
+       return err
+  }
+
+	return nil
+}
+
+func (c *CassandraClient) Get(key string) (string, error) {
+	  var text string
+    cql := "SELECT id, first_name , last_name, email, gender, city_id, password FROM users WHERE id = $1"
+	  err := c.client.Query(cql,
+        key).Consistency(gocql.One).Scan(&text)
+	  return text, err
+}
 
 func (c *CouchClient) Set(key string, value string) (error) {
    err := c.client.Set(key, 0, value)
@@ -151,7 +179,21 @@ func GetClient(test string) Client {
         os.Exit(1)
       }
       client = &PGClient{db}
-    default:
+	case "cassandra":
+		fallthrough
+	case "cassy":
+		    // connect to the cluster
+    cluster := gocql.NewCluster("localhost")
+		cluster.ProtoVersion = 3
+    cluster.Keyspace = "example"
+    cluster.Consistency = gocql.Quorum
+    sess, err := cluster.CreateSession()
+		if err != nil {
+			log.Fatal("Cassandra couldn't connect")
+		}
+		client = &CassandraClient{sess}
+    
+  default:
       log.Fatalf(`Test "%s", not recognized`, test)
       os.Exit(1)
   }
