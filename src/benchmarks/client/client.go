@@ -10,6 +10,7 @@ import (
  _ "github.com/lib/pq"
  "database/sql"
  "encoding/json"
+ _ "github.com/mattn/go-sqlite3"
  "github.com/gocql/gocql"
 )
 
@@ -41,6 +42,11 @@ type RedisClient struct {
 type PGClient struct {
   client *sql.DB
 }
+
+type SQLiteClient struct {
+  client *sql.DB
+}
+
 
 type Client interface {
   Set(key string, value string) (error)
@@ -141,6 +147,45 @@ func (c *PGClient) Get(key string) (string, error) {
 }
 
 
+func (c *SQLiteClient) Set(key string, value string) (error) {
+   var user User
+   var err error = json.Unmarshal([]byte(value), &user)
+   rows, err := c.client.Query("INSERT INTO users(first_name, last_name, email, city_id, gender, password) VALUES ($1, $2, $3, $4, $5, $6)", user.FirstName, user.LastName, user.Email, user.CityId, user.Gender, user.Password)
+   if err == nil {
+     for rows.Next() {
+     }
+   }
+   return err
+}
+
+func (c *SQLiteClient) Get(key string) (string, error) {
+   var id int
+   var err error
+   var str string
+   var rows *sql.Rows
+   var user User
+
+   id, err = strconv.Atoi(key[strings.Index(key, ":")+1:])
+
+   if err == nil {
+     rows, err = c.client.Query("SELECT id, first_name , last_name, email, gender, city_id, password FROM users WHERE id = $1", id)
+   }
+
+   if err == nil {
+     for rows.Next() {
+        rows.Scan(&user.Id, &user.FirstName, &user.LastName, &user.Email, &user.Gender, &user.CityId, &user.Password)
+     }
+
+     bytes, err := json.Marshal(user)
+     if err == nil {
+       str = string(bytes)
+     }
+   }
+
+   return str, err
+}
+
+
 func GetClient(test string) Client {
 	var client Client
   // TODO: configure with properties
@@ -179,6 +224,22 @@ func GetClient(test string) Client {
         os.Exit(1)
       }
       client = &PGClient{db}
+	case "sqlite":
+      db, err := sql.Open("sqlite3","file:test.db?cache=shared&mode=memory")
+	    _, err  = db.Exec("create table users(id integer primary key autoincrement, first_name text, last_name text, email text, city_id int, gender text, password text);")
+      if err != nil {
+        log.Fatal(err)
+        os.Exit(1)
+      }
+      client = &SQLiteClient{db}
+	case "sqlite-file":
+      db, err := sql.Open("sqlite3","file:test.db")
+	    _, err  = db.Exec("create table users(id integer primary key autoincrement, first_name text, last_name text, email text, city_id int, gender text, password text);")
+      if err != nil {
+        log.Fatal(err)
+        os.Exit(1)
+      }
+      client = &SQLiteClient{db}
 	case "cassandra":
 		fallthrough
 	case "cassy":
