@@ -11,8 +11,8 @@ import (
  "sync"
  "strconv"
  "sync/atomic"
- "benchmarks/file"
- "benchmarks/client"
+ "github.com/base698/benchmarks/benchmarks/file"
+ "github.com/base698/benchmarks/benchmarks/client"
 )
 
 

@@ -1,6 +1,6 @@
 ## Sample run
 ```bash
-$ go run src/benchmarks.go -test=psql -get -r 1000000
+$ go run benchmarks/benchmarks.go -test=psql -get -r 1000000
 ```
 
 Valid tests are psql, redis, couchbase.  Set DATABASE_URL to use psql.  
@@ -19,6 +19,6 @@ Doing read test...
 ## OR:  Build and use the binary
 ```bash
 $ go get
-$ go build src/benchmarks.go
+$ go build benchmarks/benchmarks.go
 $ ./benchmarks
 ```
